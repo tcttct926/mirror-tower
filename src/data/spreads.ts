@@ -1,0 +1,148 @@
+import type { SpreadConfig } from '../types/tarot'
+
+export const spreads: SpreadConfig[] = [
+  {
+    type: 'single',
+    nameZh: '单牌指引',
+    nameEn: 'Single Card',
+    description: '抽取一张牌，获取今日的宇宙指引',
+    positionCount: 1,
+    positions: [
+      {
+        index: 0,
+        labelZh: '今日指引',
+        labelEn: "Today's Guidance",
+        descriptionZh: '宇宙此刻想要告诉你的信息',
+        x: 0.5,
+        y: 0.5,
+      },
+    ],
+  },
+  {
+    type: 'three-card',
+    nameZh: '三牌时序',
+    nameEn: 'Three Card Spread',
+    description: '过去、现在、未来——时间的河流中的你',
+    positionCount: 3,
+    positions: [
+      {
+        index: 0,
+        labelZh: '过去',
+        labelEn: 'Past',
+        descriptionZh: '塑造当前局面的过去经历',
+        x: 0.2,
+        y: 0.5,
+      },
+      {
+        index: 1,
+        labelZh: '现在',
+        labelEn: 'Present',
+        descriptionZh: '此刻你面对的状况和能量',
+        x: 0.5,
+        y: 0.5,
+      },
+      {
+        index: 2,
+        labelZh: '未来',
+        labelEn: 'Future',
+        descriptionZh: '基于当前趋势的可能走向',
+        x: 0.8,
+        y: 0.5,
+      },
+    ],
+  },
+  {
+    type: 'celtic-cross',
+    nameZh: '凯尔特十字',
+    nameEn: 'Celtic Cross',
+    description: '十张牌深度解读，全面洞悉人生的十字路口',
+    positionCount: 10,
+    positions: [
+      {
+        index: 0,
+        labelZh: '现状',
+        labelEn: 'Present Situation',
+        descriptionZh: '你当前面对的核心状况',
+        x: 0.35,
+        y: 0.4,
+      },
+      {
+        index: 1,
+        labelZh: '挑战',
+        labelEn: 'Challenge',
+        descriptionZh: '横在你面前的障碍或冲突',
+        x: 0.35,
+        y: 0.4,
+        rotation: 90,
+      },
+      {
+        index: 2,
+        labelZh: '潜意识',
+        labelEn: 'Subconscious',
+        descriptionZh: '影响你但尚未觉察的深层因素',
+        x: 0.35,
+        y: 0.65,
+      },
+      {
+        index: 3,
+        labelZh: '近因',
+        labelEn: 'Recent Past',
+        descriptionZh: '最近发生并影响当前的事件',
+        x: 0.15,
+        y: 0.4,
+      },
+      {
+        index: 4,
+        labelZh: '可能结果',
+        labelEn: 'Possible Outcome',
+        descriptionZh: '基于当前趋势的最佳可能',
+        x: 0.35,
+        y: 0.15,
+      },
+      {
+        index: 5,
+        labelZh: '近未来',
+        labelEn: 'Near Future',
+        descriptionZh: '即将到来的变化或发展',
+        x: 0.55,
+        y: 0.4,
+      },
+      {
+        index: 6,
+        labelZh: '自我',
+        labelEn: 'Self',
+        descriptionZh: '你在此事中的真实态度和感受',
+        x: 0.78,
+        y: 0.8,
+      },
+      {
+        index: 7,
+        labelZh: '环境',
+        labelEn: 'Environment',
+        descriptionZh: '周围人事物对你的影响',
+        x: 0.78,
+        y: 0.6,
+      },
+      {
+        index: 8,
+        labelZh: '希望与恐惧',
+        labelEn: 'Hopes and Fears',
+        descriptionZh: '内心深处的期盼与担忧',
+        x: 0.78,
+        y: 0.4,
+      },
+      {
+        index: 9,
+        labelZh: '最终结果',
+        labelEn: 'Final Outcome',
+        descriptionZh: '综合所有因素的最终走向',
+        x: 0.78,
+        y: 0.2,
+      },
+    ],
+  },
+]
+
+export function getSpreadByType(type: SpreadConfig['type']): SpreadConfig | undefined {
+  return spreads.find(s => s.type === type)
+}
