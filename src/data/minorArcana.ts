@@ -101,13 +101,6 @@ const pentaclesCards: CardEntry[] = [
   { keywordsUpright: ['财富', '商业', '安全', '领导'], keywordsReversed: ['贪婪', '财务滥用', '不诚实', '过度物质主义'], meaningUpright: '星币国王是物质领域的成功统治者。他坐在丰收的宝座上，手握星币与权杖，以稳健的商业头脑创造了持久的财富。成功不仅是拥有，更是明智地管理和分享。', meaningReversed: '星币国王逆位暗示可能存在财务滥用或贪婪的倾向，也许过度物质主义让你失去了更重要的东西。', description: '一位威严的国王坐在繁花宝座上，手握星币与权杖，脚下铺满花朵与葡萄' },
 ]
 
-const suitMap: Record<string, CardEntry[]> = {
-  wands: wandsCards,
-  cups: cupsCards,
-  swords: swordsCards,
-  pentacles: pentaclesCards,
-}
-
 export const minorArcana: TarotCard[] = suits.flatMap((suitData) =>
   suitData.suit === 'wands' ? wandsCards :
   suitData.suit === 'cups' ? cupsCards :

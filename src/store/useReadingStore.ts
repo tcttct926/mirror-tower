@@ -18,7 +18,7 @@ interface ReadingStore {
   setIsInterpreting: (val: boolean) => void
   saveReading: () => void
   clearCurrentReading: () => void
-  setApiKey: (key: string) => void
+  setApiKey: (key: string | null) => void
   deleteReading: (id: string) => void
 }
 

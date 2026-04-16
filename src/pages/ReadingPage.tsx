@@ -19,7 +19,7 @@ function ReadingPage() {
   const isInterpreting = useReadingStore((s) => s.isInterpreting)
   const clearCurrentReading = useReadingStore((s) => s.clearCurrentReading)
 
-  const { draw, remaining, canDraw, drawnCount, totalPositions } = useCardDraw(currentSpread)
+  const { draw, remaining, canDraw, totalPositions } = useCardDraw(currentSpread)
   const { interpret } = useInterpretation()
 
   const spread = currentSpread ? getSpreadByType(currentSpread) : null
