@@ -1,265 +1,159 @@
-import type { DrawnCard, SpreadType } from '../types/tarot'
+import type { DrawnCard, SpreadType, ZodiacSign, ZodiacElement } from '../types/tarot'
+import { getZodiacTrait, getZodiacNameZh, getZodiacElement } from '../utils/zodiac'
 
-const positionTemplates: Record<string, string[]> = {
-  '今日指引': [
-    '今日宇宙给你的指引是{cardName}。{orientation}，这提示你{keywordInsight}。请留意今天生活中的相关信号。',
+// Brief position framing — one sentence to contextualize the card meaning in each position
+const positionFrames: Record<string, string> = {
+  '今日指引': '',
+  '过去': '这股能量来自你过去的经历——',
+  '现在': '此刻你正面对——',
+  '未来': '未来的走向暗示——',
+  '现状': '你当前的核心状况——',
+  '挑战': '你面对的挑战——',
+  '潜意识': '在你没有意识到的层面——',
+  '近因': '最近影响你的事情——',
+  '可能结果': '如果维持现状——',
+  '近未来': '即将到来的变化——',
+  '自我': '你内心真实的态度——',
+  '环境': '你周围的环境——',
+  '希望与恐惧': '你既期待又害怕的——',
+  '最终结果': '综合所有能量的最终走向——',
+  '直觉之选': '你凭直觉选中的这张牌——',
+}
+
+// Brief zodiac closing notes (1 sentence per element, 2 variations)
+const zodiacClosings: Record<ZodiacElement, string[]> = {
+  fire: [
+    '致{zodiacName}：把牌面的讯息转化为你今天就能做的一步，行动永远比等待更符合你的本性。',
+    '致{zodiacName}：你的直觉比分析更快——相信此刻的第一反应，然后去做。',
   ],
-  '过去': [
-    '在过去的经历中，{cardName}的{orientation}暗示着你曾经{keywordInsight}。这段经历塑造了你当前的状态。',
+  earth: [
+    '致{zodiacName}：你的稳重让你不会被情绪带着走，但今天也许需要你迈出舒适区一步。',
+    '致{zodiacName}：务实地面对，把牌面的提示变成一件今天就能做的小事。',
   ],
-  '现在': [
-    '此刻，{cardName}以{orientation}出现在你面前，意味着你正{keywordInsight}。这是你需要直面和觉察的能量。',
+  air: [
+    '致{zodiacName}：你的理性是优势，但有些答案光靠分析得不到——试着感受一下。',
+    '致{zodiacName}：你擅长看到事物的另一面，这张牌的含义在你这里可能有更深的解读。',
   ],
-  '未来': [
-    '展望未来，{cardName}的{orientation}预示着你将{keywordInsight}。以当下的觉知和行动，你可以积极影响这个走向。',
-  ],
-  '现状': [
-    '你当前面对的核心状况由{cardName}代表。{orientation}说明你正{keywordInsight}。',
-  ],
-  '挑战': [
-    '横在你面前的挑战是{cardName}的{orientation}。这暗示{keywordInsight}，需要你勇敢面对。',
-  ],
-  '潜意识': [
-    '在潜意识层面，{cardName}以{orientation}的形式影响着你。你可能未曾察觉{keywordInsight}，但它一直在暗中运作。',
-  ],
-  '近因': [
-    '近期影响你的事件由{cardName}的{orientation}映射。{keywordInsight}——这些近因正是当前局面的种子。',
-  ],
-  '可能结果': [
-    '基于当前能量，{cardName}的{orientation}指向的可能性是{keywordInsight}。记住，未来可以被你的选择所改变。',
-  ],
-  '近未来': [
-    '即将到来的变化由{cardName}的{orientation}暗示。你可能会经历{keywordInsight}。',
-  ],
-  '自我': [
-    '你在此事中的真实态度是{cardName}的{orientation}。{keywordInsight}——这是内心最诚实的回响。',
-  ],
-  '环境': [
-    '你周围的环境由{cardName}的{orientation}所描绘。{keywordInsight}正在影响你的判断和行动。',
-  ],
-  '希望与恐惧': [
-    '在希望与恐惧的交织中，{cardName}以{orientation}出现。你内心深处{keywordInsight}，这两种力量正在拉扯。',
-  ],
-  '最终结果': [
-    '综合所有牌面的能量，{cardName}的{orientation}指向的最终走向是{keywordInsight}。请以觉知和勇气迎接这个结果。',
+  water: [
+    '致{zodiacName}：你的直觉让你能感受到文字之外的讯息，相信你此刻的感应。',
+    '致{zodiacName}：这张牌触及的可能比你看到的更深——给自己一点时间去体会。',
   ],
 }
 
-const keywordFragments: Record<string, string> = {
-  '新开始': '迎来一个新的起点',
-  '自由': '渴望挣脱束缚获得自由',
-  '天真': '以纯真的心态面对一切',
-  '信仰的飞跃': '需要一次勇敢的飞跃',
-  '鲁莽': '可能有些冒失和冲动',
-  '拖延': '在犹豫和拖延中耗费时间',
-  '冒险': '面对不确定的风险',
-  '缺乏方向': '感到迷失方向',
-  '创造力': '拥有强大的创造能量',
-  '意志力': '以坚定的意志推动事情发展',
-  '技巧': '运用专业技能和才能',
-  '资源丰富': '身边拥有丰富的可用资源',
-  '欺骗': '需要警惕不诚实的行为',
-  '操控': '可能受到他人操控或操控他人',
-  '才能浪费': '未能充分利用自己的天赋',
-  '缺乏行动': '想法多而行动少',
-  '直觉': '需要倾听内心的直觉',
-  '潜意识': '有深层的信息在潜意识中浮现',
-  '神秘': '感受到某种神秘的指引',
-  '内在智慧': '内在的智慧正在觉醒',
-  '忽视直觉': '你可能忽视了自己内心的声音',
-  '表面化': '只看到了事物的表面',
-  '秘密': '有些事情尚未被揭示',
-  '情绪波动': '情绪正在经历起伏',
-  '丰饶': '正进入一段丰盛的时期',
-  '滋养': '需要给予或接受滋养与关爱',
-  '自然': '顺应自然的节律而行',
-  '母性': '感受到母性力量的庇护',
-  '依赖': '可能过度依赖他人',
-  '过度保护': '出于关心而过度保护',
-  '创造力枯竭': '灵感暂时干涸',
-  '忽视自我': '在照顾他人时忽视了自己',
-  '权威': '与权威或规则产生关联',
-  '秩序': '需要建立秩序和结构',
-  '领导': '承担领导或引导的责任',
-  '结构': '生活需要更清晰的结构',
-  '专横': '可能变得过于强势',
-  '僵化': '思维或行为模式过于僵化',
-  '控制欲': '想要掌控一切',
-  '缺乏灵活': '难以适应变化',
-  '传统': '与传统价值观和智慧相关',
-  '教导': '有值得学习的教导出现',
-  '信仰': '信仰的力量正在显现',
-  '归属': '寻找或找到了归属感',
-  '叛逆': '内心的叛逆正在升起',
-  '反传统': '需要打破陈旧的规则',
-  '自由思考': '以独立的方式思考',
-  '教条': '受到教条式思维的束缚',
-  '爱情': '爱情的能量正在流动',
-  '选择': '面临重要的选择',
-  '和谐': '正在走向和谐与平衡',
-  '价值观': '核心价值观受到考验',
-  '失衡': '某种关系或状态失去平衡',
-  '价值观冲突': '内心的价值观发生冲突',
-  '选择困难': '在重要决定前犹豫不决',
-  '不和谐': '感到与周围不协调',
-  '胜利': '胜利就在前方',
-  '决心': '决心正在推动你前进',
-  '前进': '是时候全速前进了',
-  '失控': '感到事情正在失控',
-  '方向迷失': '暂时找不到前进的方向',
-  '固执': '过于固执地坚持己见',
-  '力量浪费': '力量被无谓地消耗',
-  '内在力量': '你拥有强大的内在力量',
-  '勇气': '勇气正在你心中涌动',
-  '耐心': '耐心是你此刻最需要的品质',
-  '温柔': '以温柔的方式达成目标',
-  '自我怀疑': '对自己的能力产生怀疑',
-  '软弱': '感到力量不足',
-  '缺乏信心': '暂时失去了信心',
-  '内心挣扎': '正在经历内心的挣扎',
-  '内省': '需要一段内省的时间',
-  '独处': '独处能带来洞见',
-  '智慧': '内在的智慧正在积累',
-  '寻找真相': '在追寻真相的路上',
-  '孤立': '可能正在将自己孤立起来',
-  '逃避': '以独处为名逃避面对',
-  '固执己见': '过于坚持自己的看法',
-  '拒绝帮助': '不愿接受他人的帮助',
-  '转变': '重大转变正在发生',
-  '机遇': '新的机遇正在到来',
-  '命运': '命运的轮子在转动',
-  '循环': '一切都在循环往复中',
-  '逆境': '正处于一段逆境之中',
-  '抗拒变化': '拼命抗拒不可避免的变化',
-  '坏运气': '运势暂时处于低谷',
-  '公正': '公正的力量正在起作用',
-  '因果': '种什么因结什么果',
-  '真相': '真相终将浮出水面',
-  '责任': '需要承担应尽的责任',
-  '不公': '可能遭遇了不公平的对待',
-  '逃避责任': '试图逃避应负的责任',
-  '偏见': '偏见正在影响你的判断',
-  '牺牲': '某种牺牲是必要的',
-  '新视角': '需要换一个角度看问题',
-  '等待': '适当的等待会带来收获',
-  '放手': '是时候放手了',
-  '无谓牺牲': '正在为不值得的事情牺牲',
-  '拒绝改变视角': '拒绝以新的角度看待问题',
-  '平衡': '需要在生活中找到平衡',
-  '调和': '以调和的方式化解矛盾',
-  '中庸': '走中庸之道是最明智的选择',
-  '过度': '某些方面做得过多了',
-  '缺乏耐心': '急于求成而失去耐心',
-  '极端': '走向了某个极端',
-  '束缚': '感到被某种力量束缚',
-  '欲望': '欲望正在主导你的行为',
-  '物质': '过于关注物质层面',
-  '阴影': '需要面对内心的阴影',
-  '释放': '束缚即将被打破',
-  '觉醒': '开始从幻象中觉醒',
-  '打破束缚': '你正在挣脱锁链',
-  '面对阴影': '勇敢面对内心的黑暗',
-  '突变': '突如其来的变化即将到来',
-  '崩塌': '旧的结构正在瓦解',
-  '逃避灾难': '试图逃避不可避免的变动',
-  '恐惧改变': '恐惧正在阻碍改变',
-  '缓慢崩解': '危机在缓慢侵蚀',
-  '抗拒觉醒': '抗拒必要的觉醒',
-  '希望': '希望正在照亮你的前路',
-  '灵感': '灵感如星光般降临',
-  '宁静': '在宁静中找到治愈',
-  '治愈': '治愈正在进行',
-  '失去信心': '暂时失去了希望',
-  '绝望': '黑暗中看不到光',
-  '断开连接': '与内在之光断开了连接',
-  '迷失方向': '找不到前进的方向',
-  '幻象': '事情可能不是表面看到的样子',
-  '不安': '内心感到莫名的不安',
-  '释放恐惧': '恐惧正在失去对你的控制',
-  '真相浮现': '真相正在从迷雾中浮现',
-  '走出迷雾': '迷雾正在消散',
-  '情绪平复': '情绪开始恢复平静',
-  '喜悦': '喜悦正在涌入你的生活',
-  '成功': '成功正在向你招手',
-  '活力': '生命力充沛',
-  '光明': '光明驱散了一切阴影',
-  '暂时的挫折': '这只是一时的挫折',
-  '自我中心': '可能过于自我中心',
-  '过度乐观': '乐观需要脚踏实地的支撑',
-  '内在小孩受阻': '内心的纯真被压抑了',
-  '重生': '以全新的自我重新出发',
-  '审视': '需要诚实地审视过去',
-  '召唤': '灵魂深处有一个声音在呼唤',
-  '拒绝成长': '抗拒必要的成长',
-  '逃避审视': '逃避面对真实的自己',
-  '无法释怀': '无法原谅和放下',
-  '圆满': '一切达到了圆满',
-  '完成': '一个重要的循环即将完成',
-  '整合': '所有的碎片正在整合为一体',
-  '成就': '你的努力获得了最终成就',
-  '未完成': '某些事情尚未完成',
-  '缺乏闭合': '缺少最后的收尾',
-  '延迟': '完成的时间被推迟',
-  '缺乏整合': '碎片还没有拼成完整的图',
+// Per-zodiac brief note for card-specific interaction (used for key positions only)
+const zodiacCardNotes: Record<ZodiacSign, (cardName: string) => string> = {
+  aries: (c) => `以白羊的行动力，面对${c}的讯息，你可能会想立刻动手——先想清楚方向再冲。`,
+  taurus: (c) => `金牛的务实让你对${c}的提示不会过度解读，但也要注意是否在抗拒变化。`,
+  gemini: (c) => `双子能同时看到${c}的正反两面，这是优势，但别在可能性中迷失了方向。`,
+  cancer: (c) => `巨蟹的直觉让你对${c}的感受比语言更深，相信你此刻的感应。`,
+  leo: (c) => `狮子面对${c}的讯息，有把挑战变成舞台的天赋——但有时退一步比冲上去更需要勇气。`,
+  virgo: (c) => `处女擅长从${c}中捕捉细节，但有时候放下分析让直觉说话，答案反而更清晰。`,
+  libra: (c) => `天秤对${c}中的平衡与失衡格外敏感，但有时候做出选择比两全其美更重要。`,
+  scorpio: (c) => `天蝎不会满足于${c}的表面含义——你本能地想挖到最深处，这是你的力量。`,
+  sagittarius: (c) => `射手对${c}的讯息充满期待，但真正的智慧是在乐观中保持清醒。`,
+  capricorn: (c) => `摩羯面对${c}会本能地想制定计划——这很好，但偶尔也要允许自己不按剧本走。`,
+  aquarius: (c) => `水瓶总能从${c}中读出超越当下的含义——相信你那个与众不同的直觉。`,
+  pisces: (c) => `双鱼对${c}的感受近乎本能，但在感受的同时也要守护好自己的边界。`,
 }
 
-function getKeywordInsight(keywords: string[], isReversed: boolean): string {
-  const relevantKeywords = isReversed ? keywords : keywords
-  for (const kw of relevantKeywords) {
-    if (keywordFragments[kw]) {
-      return keywordFragments[kw]
-    }
+function fillTemplate(tpl: string, vars: Record<string, string>): string {
+  return tpl.replace(/\{(\w+)\}/g, (_, key) => vars[key] || '')
+}
+
+export function generateFallbackInterpretation(
+  drawnCards: DrawnCard[],
+  spreadType: SpreadType,
+  zodiacSign?: ZodiacSign
+): string {
+  const parts: string[] = []
+
+  // Spread type label
+  const spreadLabels: Record<SpreadType, string> = {
+    'single': '今日单牌指引',
+    'three-card': '过去·现在·未来',
+    'celtic-cross': '凯尔特十字牌阵',
+    'intuitive': '直觉选牌',
   }
-  return `正在经历与"${relevantKeywords[0]}"相关的能量`
-}
+  parts.push(spreadLabels[spreadType])
+  parts.push('')
 
-const openingTemplates: Record<SpreadType, string[]> = {
-  'single': [
-    '让我们一起看看宇宙今日为你选中的牌面。\n\n',
-  ],
-  'three-card': [
-    '过去、现在、未来——时间之河中的三面镜子，让我们一起看看它们映照出的故事。\n\n',
-  ],
-  'celtic-cross': [
-    '凯尔特十字将为你展开一幅全面的命运画卷，十面镜子从不同角度映照你的生命。\n\n',
-  ],
-}
+  // Brief zodiac opening (1 sentence only)
+  if (zodiacSign) {
+    const zodiacName = getZodiacNameZh(zodiacSign)
+    const trait = getZodiacTrait(zodiacSign)
+    parts.push(`${zodiacName}，${trait}。`)
+    parts.push('')
+  }
 
-const closingTemplates: Record<SpreadType, string[]> = {
-  'single': [
-    '\n\n今日的指引已经呈现。记住，塔罗是镜子而非判决——命运始终掌握在你自己的手中。',
-  ],
-  'three-card': [
-    '\n\n三面镜子的映照已经完成。过去无法改变，现在正待把握，未来由你书写。带着这份觉知，勇敢地走向明天。',
-  ],
-  'celtic-cross': [
-    '\n\n十面镜子的映照已全部呈现。命运的十字路口上，每一张牌都是一盏灯，照亮你前行的道路。最终的走向，永远取决于你的选择和行动。',
-  ],
-}
+  // Card summary
+  const cardList = drawnCards
+    .map((d) => `${d.card.nameZh}${d.isReversed ? '（逆位）' : '（正位）'}`)
+    .join('、')
+  parts.push(`你抽到的牌：${cardList}`)
+  parts.push('')
 
-export function generateFallbackInterpretation(drawnCards: DrawnCard[], spreadType: SpreadType): string {
-  const openings = openingTemplates[spreadType]
-  const opening = openings[Math.floor(Math.random() * openings.length)]
+  // Find a key major arcana card for advice (prefer "self/now/core" positions)
+  const majorCards = drawnCards.filter((d) => d.card.suit === 'major')
+  const keyCard = majorCards.find((d) =>
+    ['现在', '现状', '自我', '直觉之选', '今日指引'].includes(d.position.labelZh)
+  ) || majorCards[0]
 
-  const cardReadings = drawnCards.map((drawn) => {
+  // Each card's reading
+  for (const drawn of drawnCards) {
     const card = drawn.card
+    const meaning = drawn.isReversed ? card.meaningReversed : card.meaningUpright
     const orientation = drawn.isReversed ? '逆位' : '正位'
     const positionLabel = drawn.position.labelZh
-    const keywords = drawn.isReversed ? card.keywordsReversed : card.keywordsUpright
+    const frame = positionFrames[positionLabel] || ''
 
-    const templates = positionTemplates[positionLabel] || positionTemplates['今日指引']
-    const template = templates[0]
+    // Position header
+    parts.push(`【${positionLabel}】${card.nameZh}·${orientation}`)
+    parts.push('')
 
-    const keywordInsight = getKeywordInsight(keywords, drawn.isReversed)
+    // Position framing + card meaning (use the actual card meaning text)
+    parts.push(frame ? `${frame}${meaning}` : meaning)
 
-    return template
-      .replace('{cardName}', card.nameZh)
-      .replace('{orientation}', orientation)
-      .replace('{keywordInsight}', keywordInsight)
-  })
+    // For major arcana, add a concrete real-life situation example
+    if (card.suit === 'major') {
+      const situations = drawn.isReversed ? card.situationsReversed : card.situationsUpright
+      if (situations && situations.length > 0) {
+        const sit = situations[Math.floor(Math.random() * situations.length)]
+        parts.push('')
+        parts.push(`比如：${sit}`)
+      }
+    }
 
-  const closings = closingTemplates[spreadType]
-  const closing = closings[Math.floor(Math.random() * closings.length)]
+    // For key positions, add zodiac-card connection (1 sentence only)
+    if (zodiacSign) {
+      const isKeyPosition = positionLabel === '现在'
+        || positionLabel === '现状'
+        || positionLabel === '自我'
+        || positionLabel === '直觉之选'
+        || positionLabel === '今日指引'
 
-  return opening + cardReadings.join('\n\n') + closing
+      if (isKeyPosition) {
+        parts.push('')
+        parts.push(zodiacCardNotes[zodiacSign](card.nameZh))
+      }
+    }
+
+    parts.push('')
+  }
+
+  // Add advice from a key major arcana card
+  if (keyCard && keyCard.card.advice) {
+    parts.push(`建议：${keyCard.card.advice}`)
+    parts.push('')
+  }
+
+  // Brief zodiac closing (1 sentence)
+  if (zodiacSign) {
+    const element = getZodiacElement(zodiacSign)
+    const zodiacName = getZodiacNameZh(zodiacSign)
+    const notes = zodiacClosings[element]
+    const note = notes[Math.floor(Math.random() * notes.length)]
+    parts.push(fillTemplate(note, { zodiacName }))
+  }
+
+  return parts.join('\n')
 }

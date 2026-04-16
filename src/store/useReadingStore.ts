@@ -1,25 +1,53 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { DrawnCard, Reading, SpreadType, TarotCard, SpreadPosition } from '../types/tarot'
+import type { DrawnCard, Reading, SpreadType, TarotCard, SpreadPosition, User, IntuitiveOption } from '../types/tarot'
+import { simpleHash } from '../utils/hash'
+import { getZodiacSign } from '../utils/zodiac'
+import { solarToLunar, formatLunarDate } from '../utils/lunarCalendar'
+
+const USERS_KEY = 'mirror-tower-users'
+
+function getStoredUsers(): (User & { passwordHash: string })[] {
+  try {
+    return JSON.parse(localStorage.getItem(USERS_KEY) || '[]')
+  } catch {
+    return []
+  }
+}
+
+function setStoredUsers(users: (User & { passwordHash: string })[]) {
+  localStorage.setItem(USERS_KEY, JSON.stringify(users))
+}
+
+interface ReadingAttempt {
+  timestamp: number
+  spreadType: SpreadType
+}
 
 interface ReadingStore {
   currentSpread: SpreadType | null
   drawnCards: DrawnCard[]
   interpretation: string | null
-  interpretationSource: 'ai' | 'fallback' | null
   isInterpreting: boolean
-  apiKey: string | null
   readings: Reading[]
+  currentUser: User | null
+  intuitiveOptions: IntuitiveOption[] | null
+  readingAttempts: ReadingAttempt[]
 
   selectSpread: (spread: SpreadType) => void
   drawCard: (card: TarotCard, position: SpreadPosition) => void
   revealCard: (index: number) => void
-  setInterpretation: (text: string, source: 'ai' | 'fallback') => void
+  setInterpretation: (text: string) => void
   setIsInterpreting: (val: boolean) => void
   saveReading: () => void
   clearCurrentReading: () => void
-  setApiKey: (key: string | null) => void
   deleteReading: (id: string) => void
+  registerUser: (data: { name: string; birthDate: string; gender: 'male' | 'female' | 'other'; phone: string; password: string }) => boolean
+  loginUser: (phone: string, password: string) => boolean
+  logoutUser: () => void
+  updateProfile: (data: Partial<Pick<User, 'name' | 'gender' | 'birthDate'>>) => void
+  setIntuitiveOptions: (options: IntuitiveOption[]) => void
+  selectIntuitiveCard: (cardId: number) => void
 }
 
 export const useReadingStore = create<ReadingStore>()(
@@ -28,19 +56,27 @@ export const useReadingStore = create<ReadingStore>()(
       currentSpread: null,
       drawnCards: [],
       interpretation: null,
-      interpretationSource: null,
       isInterpreting: false,
-      apiKey: null,
       readings: [],
+      currentUser: null,
+      intuitiveOptions: null,
+      readingAttempts: [],
 
-      selectSpread: (spread) =>
+      selectSpread: (spread) => {
+        const now = Date.now()
+        const twoDaysAgo = now - 2 * 24 * 60 * 60 * 1000
+        const { readingAttempts } = get()
+        // Clean old attempts and record new one
+        const cleaned = readingAttempts.filter((a) => a.timestamp >= twoDaysAgo)
         set({
           currentSpread: spread,
           drawnCards: [],
           interpretation: null,
-          interpretationSource: null,
           isInterpreting: false,
-        }),
+          intuitiveOptions: null,
+          readingAttempts: [...cleaned, { timestamp: now, spreadType: spread }],
+        })
+      },
 
       drawCard: (card, position) => {
         const isReversed = Math.random() < 0.4
@@ -62,13 +98,13 @@ export const useReadingStore = create<ReadingStore>()(
           ),
         })),
 
-      setInterpretation: (text, source) =>
-        set({ interpretation: text, interpretationSource: source }),
+      setInterpretation: (text) =>
+        set({ interpretation: text }),
 
       setIsInterpreting: (val) => set({ isInterpreting: val }),
 
       saveReading: () => {
-        const { currentSpread, drawnCards, interpretation, interpretationSource, readings } = get()
+        const { currentSpread, drawnCards, interpretation, readings } = get()
         if (!currentSpread || drawnCards.length === 0) return
 
         const reading: Reading = {
@@ -77,7 +113,7 @@ export const useReadingStore = create<ReadingStore>()(
           spreadType: currentSpread,
           cards: drawnCards,
           interpretation: interpretation,
-          interpretationSource: interpretationSource,
+          interpretationSource: 'fallback',
         }
         set({ readings: [reading, ...readings] })
       },
@@ -87,22 +123,83 @@ export const useReadingStore = create<ReadingStore>()(
           currentSpread: null,
           drawnCards: [],
           interpretation: null,
-          interpretationSource: null,
           isInterpreting: false,
+          intuitiveOptions: null,
         }),
-
-      setApiKey: (key) => set({ apiKey: key }),
 
       deleteReading: (id) =>
         set((state) => ({
           readings: state.readings.filter((r) => r.id !== id),
         })),
+
+      registerUser: (data) => {
+        const users = getStoredUsers()
+        if (users.some((u) => u.phone === data.phone)) return false
+
+        const [year, month, day] = data.birthDate.split('-').map(Number)
+        const zodiacSign = getZodiacSign(month, day)
+        const lunar = solarToLunar(year, month, day)
+        const birthDateLunar = formatLunarDate(lunar)
+
+        const user: User = {
+          id: Date.now().toString(36) + Math.random().toString(36).substring(2),
+          name: data.name,
+          birthDate: data.birthDate,
+          birthDateLunar,
+          gender: data.gender,
+          phone: data.phone,
+          passwordHash: simpleHash(data.password),
+          zodiacSign,
+          createdAt: Date.now(),
+        }
+
+        setStoredUsers([...users, user])
+        set({ currentUser: user })
+        return true
+      },
+
+      loginUser: (phone, password) => {
+        const users = getStoredUsers()
+        const user = users.find((u) => u.phone === phone && u.passwordHash === simpleHash(password))
+        if (!user) return false
+        set({ currentUser: user })
+        return true
+      },
+
+      logoutUser: () => set({ currentUser: null }),
+
+      updateProfile: (data) => {
+        const { currentUser } = get()
+        if (!currentUser) return
+        let updated = { ...currentUser, ...data }
+        // Recalculate zodiacSign and lunar date if birthDate changed
+        if (data.birthDate && data.birthDate !== currentUser.birthDate) {
+          const [year, month, day] = data.birthDate.split('-').map(Number)
+          updated.zodiacSign = getZodiacSign(month, day)
+          const lunar = solarToLunar(year, month, day)
+          updated.birthDateLunar = formatLunarDate(lunar)
+        }
+        const users = getStoredUsers()
+        setStoredUsers(users.map((u) => (u.id === updated.id ? updated : u)))
+        set({ currentUser: updated })
+      },
+
+      setIntuitiveOptions: (options) => set({ intuitiveOptions: options }),
+
+      selectIntuitiveCard: (cardId) =>
+        set((state) => ({
+          intuitiveOptions: state.intuitiveOptions?.map((o) => ({
+            ...o,
+            selected: o.card.id === cardId,
+          })) || null,
+        })),
     }),
     {
       name: 'mirror-tower-storage',
       partialize: (state) => ({
-        apiKey: state.apiKey,
         readings: state.readings,
+        currentUser: state.currentUser,
+        readingAttempts: state.readingAttempts,
       }),
     }
   )

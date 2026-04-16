@@ -1,127 +1,204 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useReadingStore } from '../store/useReadingStore'
-import Button from '../components/ui/Button'
+import { getZodiacNameZh, getZodiacSymbol, getZodiacSign } from '../utils/zodiac'
+import { solarToLunar, formatLunarDate } from '../utils/lunarCalendar'
+import SvgIcon from '../components/ui/SvgIcon'
 
 function SettingsPage() {
-  const apiKey = useReadingStore((s) => s.apiKey)
-  const setApiKey = useReadingStore((s) => s.setApiKey)
-  const [inputKey, setInputKey] = useState(apiKey || '')
-  const [showKey, setShowKey] = useState(false)
-  const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
-  const [errorMsg, setErrorMsg] = useState('')
+  const navigate = useNavigate()
+  const currentUser = useReadingStore((s) => s.currentUser)
+  const updateProfile = useReadingStore((s) => s.updateProfile)
+  const logoutUser = useReadingStore((s) => s.logoutUser)
+
+  const [isEditing, setIsEditing] = useState(false)
+  const [editName, setEditName] = useState(currentUser?.name || '')
+  const [editBirthDate, setEditBirthDate] = useState(currentUser?.birthDate || '')
+  const [editGender, setEditGender] = useState(currentUser?.gender || 'other')
+
+  const editPreview = useMemo(() => {
+    if (!editBirthDate) return null
+    const [year, month, day] = editBirthDate.split('-').map(Number)
+    if (!year || !month || !day) return null
+    try {
+      const lunar = solarToLunar(year, month, day)
+      const zodiacSign = getZodiacSign(month, day)
+      return {
+        lunarStr: formatLunarDate(lunar),
+        zodiacName: getZodiacNameZh(zodiacSign),
+      }
+    } catch {
+      return null
+    }
+  }, [editBirthDate])
+
+  if (!currentUser) {
+    navigate('/login')
+    return null
+  }
+
+  const zodiacName = getZodiacNameZh(currentUser.zodiacSign)
+  const zodiacSymbol = getZodiacSymbol(currentUser.zodiacSign)
+  const maskedPhone = currentUser.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')
 
   const handleSave = () => {
-    setApiKey(inputKey.trim() || null)
+    updateProfile({ name: editName.trim(), gender: editGender, birthDate: editBirthDate })
+    setIsEditing(false)
   }
 
-  const handleTest = async () => {
-    if (!inputKey.trim()) return
-
-    setTestStatus('testing')
-    setErrorMsg('')
-
-    try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': inputKey.trim(),
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 10,
-          messages: [{ role: 'user', content: 'Hi' }],
-        }),
-      })
-
-      if (response.ok) {
-        setTestStatus('success')
-        setTimeout(() => setTestStatus('idle'), 3000)
-      } else {
-        const data = await response.json().catch(() => ({}))
-        setErrorMsg(data.error?.message || `HTTP ${response.status}`)
-        setTestStatus('error')
-      }
-    } catch (err) {
-      setErrorMsg('网络请求失败')
-      setTestStatus('error')
-    }
-  }
-
-  const statusDot = () => {
-    switch (testStatus) {
-      case 'success': return <span className="w-2 h-2 rounded-full bg-green-500" />
-      case 'error': return <span className="w-2 h-2 rounded-full bg-red-500" />
-      case 'testing': return <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-      default: return apiKey ? <span className="w-2 h-2 rounded-full bg-green-500/50" /> : <span className="w-2 h-2 rounded-full bg-gray-500" />
-    }
+  const handleLogout = () => {
+    logoutUser()
+    navigate('/login')
   }
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8">
-      <h2 className="font-serif text-2xl text-primary-glow mb-8 text-center">设置</h2>
+      <h2 className="font-serif text-2xl text-primary-glow mb-8 text-center">我的</h2>
 
-      {/* API Key Section */}
       <div className="bg-surface/80 backdrop-blur-sm rounded-xl border border-primary/20 p-6">
-        <div className="flex items-center gap-2 mb-4">
-          {statusDot()}
-          <h3 className="font-serif text-lg text-text-main">Anthropic API Key</h3>
+        {/* Zodiac badge */}
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
+            <span className="text-lg">{zodiacSymbol}</span>
+            <span className="text-primary-glow font-serif">{zodiacName}</span>
+          </div>
         </div>
 
-        <p className="text-text-muted text-sm mb-4 leading-relaxed">
-          输入你的 Anthropic API Key 以启用 AI 解读功能。没有 Key 时，系统将使用本地模板引擎进行解读。
-        </p>
+        {/* User info */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between py-2 border-b border-primary/10">
+            <span className="text-text-muted text-sm">姓名</span>
+            {isEditing ? (
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="bg-background border border-primary/20 rounded px-3 py-1 text-sm text-text-main
+                           focus:outline-none focus:border-primary/50 w-40 text-right"
+              />
+            ) : (
+              <span className="text-text-main text-sm">{currentUser.name}</span>
+            )}
+          </div>
 
-        <div className="relative mb-4">
-          <input
-            type={showKey ? 'text' : 'password'}
-            value={inputKey}
-            onChange={(e) => setInputKey(e.target.value)}
-            placeholder="sk-ant-..."
-            className="w-full bg-background border border-primary/20 rounded-lg px-4 py-2.5
-                       text-text-main placeholder:text-text-muted/40 text-sm
-                       focus:outline-none focus:border-primary/50 transition-colors"
-          />
-          <button
-            onClick={() => setShowKey(!showKey)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted text-xs hover:text-text-main"
-          >
-            {showKey ? '隐藏' : '显示'}
-          </button>
+          <div className="flex items-center justify-between py-2 border-b border-primary/10">
+            <span className="text-text-muted text-sm">星座</span>
+            <span className="text-primary-glow text-sm">
+              {isEditing && editPreview ? editPreview.zodiacName : zodiacName}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between py-2 border-b border-primary/10">
+            <span className="text-text-muted text-sm">公历生日</span>
+            {isEditing ? (
+              <input
+                type="date"
+                value={editBirthDate}
+                onChange={(e) => setEditBirthDate(e.target.value)}
+                className="bg-background border border-primary/20 rounded px-3 py-1 text-sm text-text-main
+                           focus:outline-none focus:border-primary/50 text-right"
+              />
+            ) : (
+              <span className="text-text-main text-sm">{currentUser.birthDate}</span>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between py-2 border-b border-primary/10">
+            <span className="text-text-muted text-sm">农历生日</span>
+            <span className="text-text-main text-sm">
+              {isEditing && editPreview ? editPreview.lunarStr : currentUser.birthDateLunar}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between py-2 border-b border-primary/10">
+            <span className="text-text-muted text-sm">性别</span>
+            {isEditing ? (
+              <div className="flex gap-2">
+                {([
+                  { value: 'male' as const, label: '男' },
+                  { value: 'female' as const, label: '女' },
+                  { value: 'other' as const, label: '其他' },
+                ]).map((g) => (
+                  <button
+                    key={g.value}
+                    onClick={() => setEditGender(g.value)}
+                    className={`px-3 py-1 rounded text-xs transition-colors ${
+                      editGender === g.value
+                        ? 'bg-primary/10 text-primary-glow border border-primary/30'
+                        : 'text-text-muted border border-primary/10'
+                    }`}
+                  >
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <span className="text-text-main text-sm">
+                {currentUser.gender === 'male' ? '男' : currentUser.gender === 'female' ? '女' : '其他'}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between py-2 border-b border-primary/10">
+            <span className="text-text-muted text-sm">手机号</span>
+            <span className="text-text-main text-sm">{maskedPhone}</span>
+          </div>
         </div>
 
-        <div className="flex gap-3">
-          <Button variant="primary" size="sm" onClick={handleSave}>
-            保存
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleTest}
-            disabled={!inputKey.trim() || testStatus === 'testing'}
-          >
-            {testStatus === 'testing' ? '测试中...' : '测试连接'}
-          </Button>
+        {/* Edit / Save buttons */}
+        <div className="mt-6 flex justify-center gap-3">
+          {isEditing ? (
+            <>
+              <button
+                onClick={handleSave}
+                className="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-primary hover:bg-primary-glow
+                           text-white text-sm transition-colors"
+              >
+                <SvgIcon name="check" size={16} />
+                保存
+              </button>
+              <button
+                onClick={() => {
+                  setIsEditing(false)
+                  setEditName(currentUser.name)
+                  setEditBirthDate(currentUser.birthDate)
+                  setEditGender(currentUser.gender)
+                }}
+                className="px-5 py-2 rounded-lg border border-primary/20 text-text-muted text-sm
+                           hover:border-primary/40 transition-colors"
+              >
+                取消
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="flex items-center gap-1.5 px-5 py-2 rounded-lg border border-primary/20
+                         text-text-muted text-sm hover:border-primary/40 transition-colors"
+            >
+              <SvgIcon name="edit" size={16} />
+              编辑
+            </button>
+          )}
         </div>
+      </div>
 
-        {errorMsg && (
-          <p className="mt-3 text-red-400 text-sm">{errorMsg}</p>
-        )}
-
-        <div className="mt-4 p-3 bg-background/50 rounded-lg">
-          <p className="text-text-muted/60 text-xs leading-relaxed">
-            ⚠️ 你的 API Key 仅存储在浏览器本地（localStorage），不会发送到除 Anthropic 以外的任何服务器。
-            建议使用设置了消费限额的专用 Key。
-          </p>
-        </div>
+      {/* Logout */}
+      <div className="mt-6 text-center">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-1.5 mx-auto px-5 py-2 rounded-lg
+                     text-text-muted/60 text-sm hover:text-red-400 transition-colors"
+        >
+          <SvgIcon name="log-out" size={16} />
+          退出登录
+        </button>
       </div>
 
       {/* About */}
       <div className="mt-8 text-center text-text-muted/40 text-xs">
-        <p>镜塔 · AI塔罗牌占卜</p>
-        <p className="mt-1">78 张牌 · 3 种牌阵 · 无限可能</p>
+        <p>镜塔 · 塔罗牌占卜</p>
+        <p className="mt-1">78 张牌 · 4 种牌阵 · 无限可能</p>
       </div>
     </div>
   )

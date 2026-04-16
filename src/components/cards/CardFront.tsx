@@ -1,4 +1,5 @@
 import type { TarotCard } from '../../types/tarot'
+import SvgIcon from '../ui/SvgIcon'
 import { cn } from '../../utils/cn'
 
 const suitGlow: Record<TarotCard['suit'], string> = {
@@ -9,12 +10,12 @@ const suitGlow: Record<TarotCard['suit'], string> = {
   pentacles: 'shadow-yellow-500/40 border-yellow-400/40',
 }
 
-const suitSymbol: Record<TarotCard['suit'], string> = {
-  major: '✦',
-  wands: '🜂',
-  cups: '🜄',
-  swords: '🜁',
-  pentacles: '🜃',
+const suitIconName: Record<TarotCard['suit'], string> = {
+  major: 'suit-major',
+  wands: 'suit-wands',
+  cups: 'suit-cups',
+  swords: 'suit-swords',
+  pentacles: 'suit-pentacles',
 }
 
 const suitGradient: Record<TarotCard['suit'], string> = {
@@ -45,8 +46,12 @@ function CardFront({ card, isReversed }: CardFrontProps) {
       )}
 
       {/* Suit symbol */}
-      <div className={cn('text-3xl opacity-80', isReversed && 'rotate-180')}>
-        {card.suit === 'major' ? card.imageSymbol : suitSymbol[card.suit]}
+      <div className={cn('opacity-80', isReversed && 'rotate-180')}>
+        {card.suit === 'major' ? (
+          <SvgIcon name="suit-major" size={28} />
+        ) : (
+          <SvgIcon name={suitIconName[card.suit]} size={28} />
+        )}
       </div>
 
       {/* Card name */}

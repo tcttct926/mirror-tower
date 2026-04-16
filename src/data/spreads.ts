@@ -141,6 +141,24 @@ export const spreads: SpreadConfig[] = [
       },
     ],
   },
+  {
+    type: 'intuitive',
+    nameZh: '直觉选牌',
+    nameEn: 'Intuitive Selection',
+    description: '面对面审视明牌，让直觉引导你选出命运之牌',
+    positionCount: 1,
+    intuitiveOptionCount: 7,
+    positions: [
+      {
+        index: 0,
+        labelZh: '直觉之选',
+        labelEn: 'Intuitive Choice',
+        descriptionZh: '你凭直觉选中的这张牌，蕴含着宇宙想要传达的信息',
+        x: 0.5,
+        y: 0.5,
+      },
+    ],
+  },
 ]
 
 export function getSpreadByType(type: SpreadConfig['type']): SpreadConfig | undefined {

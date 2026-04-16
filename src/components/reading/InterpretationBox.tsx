@@ -1,16 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import Button from '../ui/Button'
+import SvgIcon from '../ui/SvgIcon'
 import { useReadingStore } from '../../store/useReadingStore'
 
 interface InterpretationBoxProps {
   text: string | null
-  source: 'ai' | 'fallback' | null
   isInterpreting: boolean
   onInterpret: () => void
   canInterpret: boolean
 }
 
-function InterpretationBox({ text, source, isInterpreting, onInterpret, canInterpret }: InterpretationBoxProps) {
+function InterpretationBox({ text, isInterpreting, onInterpret, canInterpret }: InterpretationBoxProps) {
   const [displayedText, setDisplayedText] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const indexRef = useRef(0)
@@ -67,9 +67,8 @@ function InterpretationBox({ text, source, isInterpreting, onInterpret, canInter
       {text && (
         <div className="parchment rounded-xl p-6 sm:p-8">
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-accent text-sm">
-              {source === 'ai' ? '🤖 AI 解读' : '📜 传统解读'}
-            </span>
+            <SvgIcon name="scroll" size={16} className="text-accent" />
+            <span className="text-accent text-sm">镜塔解读</span>
           </div>
           <div className="text-text-main/90 leading-relaxed whitespace-pre-line font-serif text-base">
             {displayedText}

@@ -5,6 +5,7 @@ import { useInterpretation } from '../hooks/useInterpretation'
 import { getSpreadByType } from '../data/spreads'
 import CardSpread from '../components/cards/CardSpread'
 import CardDeck from '../components/cards/CardDeck'
+import IntuitiveCardSelector from '../components/reading/IntuitiveCardSelector'
 import InterpretationBox from '../components/reading/InterpretationBox'
 import Button from '../components/ui/Button'
 
@@ -15,14 +16,15 @@ function ReadingPage() {
   const drawCard = useReadingStore((s) => s.drawCard)
   const revealCard = useReadingStore((s) => s.revealCard)
   const interpretation = useReadingStore((s) => s.interpretation)
-  const interpretationSource = useReadingStore((s) => s.interpretationSource)
   const isInterpreting = useReadingStore((s) => s.isInterpreting)
+  const intuitiveOptions = useReadingStore((s) => s.intuitiveOptions)
   const clearCurrentReading = useReadingStore((s) => s.clearCurrentReading)
 
   const { draw, remaining, canDraw, totalPositions } = useCardDraw(currentSpread)
   const { interpret } = useInterpretation()
 
   const spread = currentSpread ? getSpreadByType(currentSpread) : null
+  const isIntuitiveSpread = currentSpread === 'intuitive'
 
   if (!currentSpread || !spread) {
     return (
@@ -48,6 +50,16 @@ function ReadingPage() {
     }
   }
 
+  const handleIntuitiveConfirm = () => {
+    const selected = intuitiveOptions?.find((o) => o.selected)
+    if (!selected) return
+    const position = spread.positions[0]
+    drawCard(selected.card, position)
+    setTimeout(() => {
+      revealCard(0)
+    }, 800)
+  }
+
   const handleInterpret = () => {
     if (drawnCards.length > 0) {
       interpret(drawnCards, currentSpread)
@@ -65,31 +77,39 @@ function ReadingPage() {
       <h2 className="font-serif text-2xl text-primary-glow mb-2">{spread.nameZh}</h2>
       <p className="text-text-muted text-sm mb-6">{spread.description}</p>
 
-      {/* Progress */}
-      <div className="text-text-muted text-sm mb-8">
-        已抽 {drawnCards.length} / {totalPositions} 张
-      </div>
+      {/* Intuitive spread: card selector */}
+      {isIntuitiveSpread && drawnCards.length === 0 ? (
+        <IntuitiveCardSelector onConfirm={handleIntuitiveConfirm} />
+      ) : (
+        <>
+          {/* Progress */}
+          {!isIntuitiveSpread && (
+            <div className="text-text-muted text-sm mb-8">
+              已抽 {drawnCards.length} / {totalPositions} 张
+            </div>
+          )}
 
-      {/* Card spread area */}
-      <div className="w-full px-4 mb-8">
-        <CardSpread
-          spread={spread}
-          drawnCards={drawnCards}
-          onReveal={revealCard}
-        />
-      </div>
+          {/* Card spread area */}
+          <div className="w-full px-4 mb-8">
+            <CardSpread
+              spread={spread}
+              drawnCards={drawnCards}
+              onReveal={revealCard}
+            />
+          </div>
 
-      {/* Deck or interpret */}
-      {canDraw && !allRevealed ? (
-        <div className="py-4">
-          <CardDeck remaining={remaining} onDraw={handleDraw} />
-        </div>
-      ) : null}
+          {/* Deck or interpret */}
+          {!isIntuitiveSpread && canDraw && !allRevealed ? (
+            <div className="py-4">
+              <CardDeck remaining={remaining} onDraw={handleDraw} />
+            </div>
+          ) : null}
+        </>
+      )}
 
       {/* Interpretation */}
       <InterpretationBox
         text={interpretation}
-        source={interpretationSource}
         isInterpreting={isInterpreting}
         onInterpret={handleInterpret}
         canInterpret={canInterpret}

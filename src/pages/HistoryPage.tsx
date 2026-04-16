@@ -1,12 +1,14 @@
 import { useReadingStore } from '../store/useReadingStore'
 import { formatDate } from '../utils/formatDate'
 import Button from '../components/ui/Button'
+import SvgIcon from '../components/ui/SvgIcon'
 import { useState } from 'react'
 
 const spreadNames: Record<string, string> = {
   'single': '单牌指引',
   'three-card': '三牌时序',
   'celtic-cross': '凯尔特十字',
+  'intuitive': '直觉选牌',
 }
 
 function HistoryPage() {
@@ -17,7 +19,7 @@ function HistoryPage() {
   if (readings.length === 0) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
-        <div className="text-4xl opacity-60">📜</div>
+        <SvgIcon name="scroll" size={48} className="opacity-60 text-primary-glow" />
         <p className="text-text-muted font-serif text-lg">尚无占卜记录</p>
         <p className="text-text-muted/50 text-sm">完成一次占卜后，记录会出现在这里</p>
       </div>

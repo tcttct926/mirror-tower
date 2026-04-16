@@ -4,6 +4,8 @@ import HomePage from './pages/HomePage'
 import ReadingPage from './pages/ReadingPage'
 import HistoryPage from './pages/HistoryPage'
 import SettingsPage from './pages/SettingsPage'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
 
 function App() {
   return (
@@ -13,6 +15,8 @@ function App() {
         <Route path="/reading" element={<ReadingPage />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
       </Routes>
     </PageWrapper>
   )

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { tarotDeck } from '../data/tarotDeck'
+import { majorArcana } from '../data/majorArcana'
 import { getSpreadByType } from '../data/spreads'
 import { shuffle } from '../utils/shuffle'
 import type { TarotCard, SpreadType } from '../types/tarot'
@@ -31,4 +32,9 @@ export function useCardDraw(spreadType: SpreadType | null) {
   }, [])
 
   return { draw, reset, remaining, canDraw, drawnCount, totalPositions }
+}
+
+export function generateIntuitiveOptions(): TarotCard[] {
+  const shuffled = shuffle([...majorArcana])
+  return shuffled.slice(0, 7)
 }
